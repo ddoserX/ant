@@ -34,3 +34,4 @@
 # Other
 build
 vcpkg_installed
+.vscode
