@@ -1,9 +1,5 @@
 #pragma once
 
-//
-// ping.hpp
-// ~~~~~~~~
-//
 // Copyright (c) 2003-2022 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -13,10 +9,10 @@
 #include <boost/asio.hpp>
 #include <istream>
 #include <ostream>
-// #include <print>
 
 #include "icmp_header.hpp"
 #include "ipv4_header.hpp"
+#include "../checker.hpp"
 
 namespace asio = boost::asio;
 namespace chrono = asio::chrono;
@@ -36,7 +32,7 @@ struct icmpCheckResult
     error_code ec = {};
 };
 
-class icmpChecker
+class icmpChecker : public IChecker
 {
 public:
     icmpChecker(boost::asio::io_context &ctx, uint16_t sequence_max = 5)
@@ -54,11 +50,11 @@ public:
     icmpChecker &operator=(const icmpChecker &) = delete;
     icmpChecker &operator=(icmpChecker &&) = delete;
 
-    void async_check(std::string hostname)
+    void async_check(const checkData &data) override
     {
-        m_result.hostname = hostname;
+        m_result.hostname = data.hostname;
 
-        m_resolver.async_resolve(icmp::v4(), hostname, "",
+        m_resolver.async_resolve(icmp::v4(), data.hostname, "",
         [this](const error_code &ec, icmp::resolver::results_type results) {
             if (ec.value() != 0)
             {
@@ -83,6 +79,22 @@ public:
         });
     }
 
+    void print(std::ostream &os) const override
+    {
+        std::string formated_string = "";
+        formated_string += std::format("{:<20} : {}\n", "hostname", m_result.hostname);
+        formated_string += std::format("{:<20} : {}\n", "remote address", m_result.remote_addr);
+        formated_string += std::format("{:<20} : {}ms\n", "reply time", m_result.reply_time);
+        formated_string += std::format("{:<20} : {}\n", "icmp test succeeded", m_result.has_success);
+
+        os << formated_string;
+    }
+
+    error_code has_error() const override
+    {
+        return m_result.ec;
+    }
+
     void stop()
     {
         if (!m_is_stopped)
@@ -101,11 +113,6 @@ public:
                 m_result.reply_time = m_result.reply_time / m_sequence;
             }
         }
-    }
-
-    icmpCheckResult get_result()
-    {
-        return m_result;
     }
 
 private:
@@ -230,5 +237,5 @@ private:
     size_t m_repliec = 0;
 
     bool m_is_stopped = false;
-    uint16_t m_sequence_max = 0;
+    uint16_t m_sequence_max = 5;
 };

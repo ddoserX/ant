@@ -1,67 +1,76 @@
-#include <print>
+#include <iostream>
+#include <any>
+#include <boost/program_options.hpp>
 
+#include "checker.hpp"
 #include "icmp/icmp_cheker.hpp"
 #include "tcp/port_checker.hpp"
 
 namespace asio = boost::asio;
+namespace po   = boost::program_options;
 
 int main(int argc, char *argv[])
 {
+    uint16_t port = 0;
+    std::string hostname = "";
+
+    po::options_description desc("command list");
+    desc.add_options()
+        ("help,h,", "print help information")
+        ("host,H", po::value<std::string>(&hostname)->default_value("google.com"), "target hostname for tcp or icmp check")
+        ("port,P", po::value<uint16_t>(&port)->default_value(0), "target port for tcp check")
+    ;
+
     try
     {
-        if (argc != 2)
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        if (vm.count("help"))
         {
-            std::print("Usage: ping <host>\n");
+            std::cout << desc << '\n';
             return 1;
         }
 
         asio::io_context ctx;
+        checkData data(hostname, port);
 
-        // tcpPortChecker port_checker(ctx);
-        // port_checker.async_check(argv[1], 80);
+        std::unique_ptr<IChecker> checker;
 
-        // ctx.run();
-
-        // tcpInfo result = port_checker.get_result();
-
-        // if (result.ec.value() != 0)
-        // {
-        //     throw boost::system::system_error(result.ec);
-        // }
-        
-        // std::print("{:<18} : {}\n", "hostname", result.hostname);
-        // std::print("{:<18} : {}\n", "remote address", result.remote_addr);
-        // std::print("{:<18} : {}\n", "port", result.port);
-        // std::print("{:<18} : {}\n", "tcp test succeeded", result.has_success);
-
-        icmpChecker pinger(ctx);
-        pinger.async_check(argv[1]);
-
-        ctx.run();
-
-        icmpCheckResult result = pinger.get_result();
-
-        if (result.ec.value() != 0)
+        if (port == 0)
         {
-            throw boost::system::system_error(result.ec);
+            checker = std::make_unique<icmpChecker>(ctx);
+        }
+        else
+        {
+            checker = std::make_unique<tcpPortChecker>(ctx);
         }
 
-        std::print("{:<20} : {}\n", "hostname", result.hostname);
-        std::print("{:<20} : {}\n", "remote address", result.remote_addr);
-        std::print("{:<20} : {}ms\n", "reply time", result.reply_time);
-        std::print("{:<20} : {}\n", "icmp test succeeded", result.has_success);
+        checker->async_check(data);
+        
+        ctx.run();
+
+        error_code ec = checker->has_error();
+        if (ec.value() != 0)
+        {
+            throw system_error(ec);
+        }
+
+        checker->print(std::cout);
+        std::cout << std::endl;
     }
     catch (const boost::system::system_error &e)
     {
-        std::print("{}\n", e.code().message());
+        std::cout << e.code().message() << '\n';
     }
     catch (const std::exception &e)
     {
-        std::print("{}\n", e.what());
+        std::cout << e.what() << '\n';
     }
     catch (...)
     {
-        std::print("Unknown error\n");
+        std::cout << "Unknown error\n";
     }
 
     return 0;

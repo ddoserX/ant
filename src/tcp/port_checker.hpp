@@ -2,7 +2,9 @@
 
 #include <boost/asio.hpp>
 #include <string>
-// #include <print>
+#include <format>
+
+#include "../checker.hpp"
 
 namespace asio = boost::asio;
 using asio::ip::tcp;
@@ -18,7 +20,7 @@ struct tcpCheckResult
     boost::system::error_code ec = {};
 };
 
-class tcpPortChecker
+class tcpPortChecker : public IChecker
 {
 public:
     tcpPortChecker(asio::io_context &ctx)
@@ -34,12 +36,12 @@ public:
         }
     }
 
-    void async_check(std::string hostname, uint16_t port)
+    void async_check(const checkData &data) override
     {
-        m_result.hostname = hostname;
-        m_result.port = port;
+        m_result.hostname = data.hostname;
+        m_result.port = data.port;
         
-        m_resolver.async_resolve(tcp::v4(), hostname, std::to_string(port), 
+        m_resolver.async_resolve(tcp::v4(), data.hostname, std::to_string(data.port), 
         [this](const error_code &ec, tcp::resolver::results_type results){
             if (ec.value() != 0)
             {
@@ -64,9 +66,20 @@ public:
         });
     }
 
-    tcpCheckResult get_result()
+    void print(std::ostream &os) const override
     {
-        return m_result;
+        std::string formated_string = "";
+        formated_string += std::format("{:<20} : {}\n", "hostname", m_result.hostname);
+        formated_string += std::format("{:<20} : {}\n", "remote address", m_result.remote_addr);
+        formated_string += std::format("{:<20} : {}\n", "reply time", m_result.port);
+        formated_string += std::format("{:<20} : {}\n", "tcp test succeeded", m_result.has_success);
+
+        os << formated_string;
+    }
+
+    error_code has_error() const override
+    {
+        return m_result.ec;
     }
 
 private:

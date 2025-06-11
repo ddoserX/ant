@@ -13,10 +13,11 @@ if (WIN32)
 endif()
 
 find_package(boost_asio REQUIRED CONFIG)
+find_package(boost_program_options REQUIRED CONFIG)
 
 add_executable(${APP} ${SRC})
 
-target_link_libraries(${APP} PRIVATE Boost::asio)
+target_link_libraries(${APP} PRIVATE Boost::asio Boost::program_options)
 
 target_compile_features(${APP} PUBLIC cxx_std_23)
 
