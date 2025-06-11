@@ -31,18 +31,19 @@ class icmpChecker
 {
 public:
     icmpChecker(boost::asio::io_context &ctx, icmp::endpoint &ep, std::shared_ptr<icmpInfo> info)
-        : m_resolver(ctx), m_sock(ctx, icmp::v4()), m_ep(ep),
-          m_timer(ctx), m_info(info), m_sequence(0), m_repliec(0)
+        : m_sock(ctx, icmp::v4()), m_ep(ep), m_timer(ctx), m_info(info)
     {
-        // m_ep = *m_resolver.resolve(icmp::v4(), hostname, "").begin();
-        // m_info->hostname = hostname;
-        // m_info->remote_addr = m_ep.address().to_string();
     }
 
     ~icmpChecker()
     {
         stop();
     }
+
+    icmpChecker(const icmpChecker &) = delete;
+    icmpChecker(icmpChecker &&) = delete;
+    icmpChecker &operator=(const icmpChecker &) = delete;
+    icmpChecker &operator=(icmpChecker &&) = delete;
 
     void start()
     {
@@ -58,7 +59,7 @@ public:
             m_timer.cancel();
             m_sock.cancel();
 
-            if(m_repliec > 0)
+            if (m_repliec > 0)
             {
                 m_info->has_success = true;
             }
@@ -182,7 +183,7 @@ private:
             //            icmp_hdr.sequence_number(),
             //            ipv4_hdr.time_to_live(),
             //            chrono::duration_cast<chrono::milliseconds>(elapsed).count());
-            
+
             m_info->reply_time += chrono::duration_cast<chrono::milliseconds>(elapsed).count();
         }
 
@@ -198,15 +199,16 @@ private:
 #endif
     }
 
-    icmp::resolver m_resolver;
+    // icmp::resolver m_resolver;
     icmp::socket m_sock;
     icmp::endpoint m_ep;
     steady_timer m_timer;
     std::shared_ptr<icmpInfo> m_info;
-    uint16_t m_sequence;
-    chrono::steady_clock::time_point m_time_sent;
-    boost::asio::streambuf m_reply_buf;
-    std::size_t m_repliec;
+    chrono::steady_clock::time_point m_time_sent{};
+    boost::asio::streambuf m_reply_buf{};
+
+    uint16_t m_sequence = 0;
+    size_t m_repliec = 0;
 
     bool m_is_stopped = false;
     uint16_t m_sequence_max = 2;

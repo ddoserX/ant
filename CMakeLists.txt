@@ -36,7 +36,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
         -Wall
         -Werror
         -Wextra
-        # -Wold-style-cast
-        # -Weffc++
+        -Wold-style-cast
+        -Weffc++
     )
 endif()
