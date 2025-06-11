@@ -13,10 +13,9 @@
 #include <boost/asio.hpp>
 #include <istream>
 #include <ostream>
-#include <print>
+// #include <print>
 
 #include "icmp_header.hpp"
-#include "icmp_info.hpp"
 #include "ipv4_header.hpp"
 
 namespace asio = boost::asio;
@@ -26,12 +25,22 @@ using asio::steady_timer;
 using asio::error::operation_aborted;
 using asio::ip::icmp;
 using boost::system::error_code;
+using boost::system::system_error;
+
+struct icmpCheckResult
+{
+    std::string hostname = "";
+    std::string remote_addr = "";
+    bool has_success = false;
+    int64_t reply_time = 0;
+    error_code ec = {};
+};
 
 class icmpChecker
 {
 public:
-    icmpChecker(boost::asio::io_context &ctx, icmp::endpoint &ep, std::shared_ptr<icmpInfo> info)
-        : m_sock(ctx, icmp::v4()), m_ep(ep), m_timer(ctx), m_info(info)
+    icmpChecker(boost::asio::io_context &ctx, uint16_t sequence_max = 5)
+        : m_resolver(ctx), m_sock(ctx, icmp::v4()), m_timer(ctx), m_sequence_max(sequence_max)
     {
     }
 
@@ -45,10 +54,33 @@ public:
     icmpChecker &operator=(const icmpChecker &) = delete;
     icmpChecker &operator=(icmpChecker &&) = delete;
 
-    void start()
+    void async_check(std::string hostname)
     {
-        start_send();
-        start_receive();
+        m_result.hostname = hostname;
+
+        m_resolver.async_resolve(icmp::v4(), hostname, "",
+        [this](const error_code &ec, icmp::resolver::results_type results) {
+            if (ec.value() != 0)
+            {
+                m_result.ec = ec;
+                return;
+            }
+
+            icmp::endpoint ep = {};
+
+            try
+            {
+                ep = *results.begin();
+                m_result.remote_addr = ep.address().to_string();
+
+                start_send(ep);
+                start_receive();
+            }
+            catch(const system_error &se)
+            {
+                m_result.ec = se.code();
+            }
+        });
     }
 
     void stop()
@@ -61,27 +93,26 @@ public:
 
             if (m_repliec > 0)
             {
-                m_info->has_success = true;
+                m_result.has_success = true;
             }
 
-            if (m_info->reply_time != 0)
+            if (m_result.reply_time != 0)
             {
-                m_info->reply_time = m_info->reply_time / m_sequence;
+                m_result.reply_time = m_result.reply_time / m_sequence;
             }
         }
     }
 
-    bool is_stopped()
+    icmpCheckResult get_result()
     {
-        return m_is_stopped;
+        return m_result;
     }
 
 private:
-    void start_send()
+    void start_send(const icmp::endpoint &endpoint)
     {
         if (m_sequence == m_sequence_max)
         {
-            // std::print("stop enter\n");
             stop();
             return;
         }
@@ -104,32 +135,27 @@ private:
 
         // Send the request.
         m_time_sent = steady_timer::clock_type::now();
-        m_sock.send_to(request_buffer.data(), m_ep);
+        m_sock.send_to(request_buffer.data(), endpoint);
 
         // Wait up to five seconds for a reply.
         m_repliec = 0;
         m_timer.expires_at(m_time_sent + chrono::seconds(request_timeout));
-        m_timer.async_wait(std::bind(&icmpChecker::handle_timeout, this));
+        m_timer.async_wait(std::bind(&icmpChecker::handle_timeout, this, endpoint));
     }
 
-    void handle_timeout()
+    void handle_timeout(const icmp::endpoint &endpoint)
     {
         if (m_is_stopped)
         {
-            // std::print("handle_timeout aborted\n");
             return;
         }
 
-        if (m_repliec == 0)
-        {
-            // std::print("Request timed out\nn");
-        }
+        // const int64_t request_timeout = 1;
 
-        const int64_t request_timeout = 1;
-
-        // Requests must be sent no less than one second apart.
-        m_timer.expires_at(m_time_sent + chrono::seconds(request_timeout));
-        m_timer.async_wait(std::bind(&icmpChecker::start_send, this));
+        // // Requests must be sent no less than one second apart.
+        // m_timer.expires_at(m_time_sent + chrono::seconds(request_timeout));
+        // m_timer.async_wait(std::bind(&icmpChecker::start_send, this, endpoint));
+        start_send(endpoint);
     }
 
     void start_receive()
@@ -151,7 +177,6 @@ private:
     {
         if (m_is_stopped)
         {
-            // std::print("handle_receive aborted\n");
             return;
         }
 
@@ -177,14 +202,8 @@ private:
             // Print out some information about the reply packet.
             chrono::steady_clock::time_point now = chrono::steady_clock::now();
             chrono::steady_clock::duration elapsed = now - m_time_sent;
-            // std::print("{:d} bytes from {:s}: icmp_seq={:d}, ttl={:d}, time={:d}ms\n",
-            //            length - ipv4_hdr.header_length(),
-            //            ipv4_hdr.source_address().to_string(),
-            //            icmp_hdr.sequence_number(),
-            //            ipv4_hdr.time_to_live(),
-            //            chrono::duration_cast<chrono::milliseconds>(elapsed).count());
 
-            m_info->reply_time += chrono::duration_cast<chrono::milliseconds>(elapsed).count();
+            m_result.reply_time += chrono::duration_cast<chrono::milliseconds>(elapsed).count();
         }
 
         start_receive();
@@ -199,17 +218,17 @@ private:
 #endif
     }
 
-    // icmp::resolver m_resolver;
+    icmp::resolver m_resolver;
     icmp::socket m_sock;
-    icmp::endpoint m_ep;
     steady_timer m_timer;
-    std::shared_ptr<icmpInfo> m_info;
     chrono::steady_clock::time_point m_time_sent{};
     boost::asio::streambuf m_reply_buf{};
+
+    icmpCheckResult m_result{};
 
     uint16_t m_sequence = 0;
     size_t m_repliec = 0;
 
     bool m_is_stopped = false;
-    uint16_t m_sequence_max = 2;
+    uint16_t m_sequence_max = 0;
 };
