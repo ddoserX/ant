@@ -4,7 +4,7 @@
 #include <string>
 #include <format>
 
-#include "../checker.hpp"
+#include "checker.hpp"
 
 namespace asio = boost::asio;
 using asio::ip::tcp;
@@ -15,9 +15,9 @@ struct tcpCheckResult
 {
     std::string hostname = "";
     std::string remote_addr = "";
+    error_code ec = {};
     uint16_t port = 0;
     bool has_success = false;
-    boost::system::error_code ec = {};
 };
 
 class tcpPortChecker : public IChecker
@@ -35,6 +35,11 @@ public:
             m_sock.close();
         }
     }
+
+    tcpPortChecker(const tcpPortChecker &) = delete;
+    tcpPortChecker(tcpPortChecker &&) = delete;
+    tcpPortChecker &operator=(const tcpPortChecker &) = delete;
+    tcpPortChecker &operator=(tcpPortChecker &&) = delete;
 
     void async_check(const checkData &data) override
     {

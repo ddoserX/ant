@@ -12,7 +12,7 @@
 
 #include "icmp_header.hpp"
 #include "ipv4_header.hpp"
-#include "../checker.hpp"
+#include "checker.hpp"
 
 namespace asio = boost::asio;
 namespace chrono = asio::chrono;
@@ -27,9 +27,9 @@ struct icmpCheckResult
 {
     std::string hostname = "";
     std::string remote_addr = "";
-    bool has_success = false;
     int64_t reply_time = 0;
     error_code ec = {};
+    bool has_success = false;
 };
 
 class icmpChecker : public IChecker
@@ -232,10 +232,9 @@ private:
     boost::asio::streambuf m_reply_buf{};
 
     icmpCheckResult m_result{};
-
-    uint16_t m_sequence = 0;
+    
     size_t m_repliec = 0;
-
-    bool m_is_stopped = false;
     uint16_t m_sequence_max = 5;
+    uint16_t m_sequence = 0;
+    bool m_is_stopped = false;
 };

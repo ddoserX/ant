@@ -44,7 +44,7 @@ public:
         address_reply = 18
     };
 
-    icmpHeader() { std::fill(rep_, rep_ + sizeof(rep_), 0); }
+    icmpHeader() { std::fill(rep_, rep_ + sizeof(rep_), static_cast<unsigned char>(0)); }
 
     unsigned char type() const { return rep_[0]; }
     unsigned char code() const { return rep_[1]; }
@@ -71,7 +71,7 @@ public:
 private:
     unsigned short decode(int a, int b) const
     {
-        return (rep_[a] << 8) + rep_[b];
+        return static_cast<unsigned short>((rep_[a] << 8) + rep_[b]);
     }
 
     void encode(int a, int b, unsigned short n)
@@ -87,7 +87,12 @@ template <typename Iterator>
 void compute_checksum(icmpHeader &header,
                       Iterator body_begin, Iterator body_end)
 {
-    unsigned int sum = (header.type() << 8) + header.code() + header.identifier() + header.sequence_number();
+    // unsigned int sum = (header.type() << static_cast<unsigned int>(8)) + header.code() + header.identifier() + header.sequence_number();
+
+    unsigned int sum = (static_cast<unsigned int>(header.type()) << static_cast<unsigned int>(8)) +
+                       static_cast<unsigned int>(header.code()) +
+                       static_cast<unsigned int>(header.identifier()) +
+                       static_cast<unsigned int>(header.sequence_number());
 
     Iterator body_iter = body_begin;
     while (body_iter != body_end)
