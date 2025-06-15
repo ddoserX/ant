@@ -34,6 +34,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         /wd4820
         /wd5045
     )
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(${APP} PUBLIC /O2 /wd4711 /wd4710)
+    endif()
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -45,4 +49,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
         -Wold-style-cast
         -Weffc++
     )
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(${APP} PUBLIC -O3)
+    endif()
 endif()
