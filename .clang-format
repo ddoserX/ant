@@ -1,0 +1,11 @@
+---
+BasedOnStyle: Google
+AccessModifierOffset: -4
+UseTab: true
+IndentWidth: 8
+BreakBeforeBraces: Linux
+ColumnLimit: 120
+
+Language: Cpp
+DerivePointerAlignment: false
+PointerAlignment: Left
