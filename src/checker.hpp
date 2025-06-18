@@ -6,8 +6,9 @@
 #include <string>
 
 struct checkData {
-	checkData(const std::string &h, uint16_t p)
-	: hostname(h), port(p) {}
+	checkData() = default;
+	checkData(const std::string& h, uint16_t p) : hostname(h), port(p) {}
+	~checkData() = default;
 
 	std::string hostname = "";
 	uint16_t port = 0;
