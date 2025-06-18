@@ -54,3 +54,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
         target_compile_options(${APP} PUBLIC -O3)
     endif()
 endif()
+
+# Найти Python
+# find_program(PYTHON_EXECUTABLE NAMES python3)
+# if(NOT PYTHON_EXECUTABLE)
+#     message(FATAL_ERROR "Python interpreter not found!")
+# endif()
+
+# add_custom_command(
+#     TARGET ${APP}
+#     PRE_BUILD
+#     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/clang-tidy-run.py
+#     COMMENT "START CLANG-TIDY ANALYSIS"
+# )
