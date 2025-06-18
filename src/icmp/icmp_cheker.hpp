@@ -9,6 +9,7 @@
 #include <boost/asio.hpp>
 #include <istream>
 #include <ostream>
+#include <format>
 
 #include "checker.hpp"
 #include "icmp_header.hpp"
